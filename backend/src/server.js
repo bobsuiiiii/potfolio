@@ -8,6 +8,20 @@ const { verifyIntegrity } = require('./config/integrity');
 const limits = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const routes = require('./routes');
+const Admin = require('./models/Admin');
+
+// If ADMIN_USERNAME + ADMIN_PASSWORD are set, create/update that admin at startup.
+// Lets you set up the login from the Render dashboard with no terminal.
+async function ensureAdmin() {
+  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD) return;
+  const username = env.ADMIN_USERNAME.toLowerCase();
+  await Admin.findOneAndUpdate(
+    { username },
+    { username, passwordHash: await Admin.hashPassword(env.ADMIN_PASSWORD), loginAttempts: 0, $unset: { lockUntil: 1 } },
+    { upsert: true }
+  );
+  logger.info({ event: 'admin_ensured', username });
+}
 
 const app = express();
 app.set('trust proxy', 1); // Render sits behind a proxy
@@ -24,6 +38,7 @@ app.use(errorHandler);
 (async () => {
   try {
     await connectDb();
+    await ensureAdmin();
     await verifyIntegrity(env, logger);
     const server = app.listen(env.PORT, () => logger.info({ event: 'listening', port: env.PORT }));
     const stop = () => server.close(() => process.exit(0));

@@ -30,6 +30,9 @@ const schema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
 
+    ADMIN_USERNAME: z.string().min(3).max(64).optional().or(z.literal('')),
+    ADMIN_PASSWORD: z.string().min(12, 'ADMIN_PASSWORD must be >= 12 chars').optional().or(z.literal('')),
+
     TAMPER_BEACON_ENABLED: z.enum(['true', 'false']).default('false'),
     TAMPER_BEACON_URL: optUrl,
   })
